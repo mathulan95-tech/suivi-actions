@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Suivi d'actions</title>
+<style>
+:root{
+  --bg:#F1F4F8;--card:#fff;--ink:#17222E;--ink2:#5B6B7C;
+  --line:#E3E9F0;--accent:#0B7285;--done:#2F9E44;--late:#E03131;--soon:#E8890C;
+  --r:16px;--sh:0 1px 3px rgba(23,34,46,.08),0 4px 14px rgba(23,34,46,.06);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;padding-bottom:120px}
+
+header{background:var(--ink);color:#fff;padding:16px 16px 12px;position:sticky;top:0;z-index:40;border-radius:0 0 22px 22px}
+.h-top{display:flex;align-items:center;justify-content:space-between}
+.h-top h1{font-size:18px;font-weight:800;display:flex;align-items:center;gap:8px}
+.dot{width:9px;height:9px;border-radius:50%;background:#63E6BE;box-shadow:0 0 8px #63E6BE}
+.user-btn{background:rgba(255,255,255,.12);border:none;color:#fff;border-radius:10px;padding:7px 12px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit}
+.stats{display:flex;gap:7px;margin-top:12px}
+.stat{flex:1;background:rgba(255,255,255,.09);border-radius:12px;padding:7px 4px;text-align:center;cursor:pointer;border:1.5px solid transparent;transition:all .15s}
+.stat.active{border-color:#63E6BE;background:rgba(99,230,190,.14)}
+.stat b{display:block;font-size:19px;font-weight:800}
+.stat b.red{color:#FF8787}
+.stat span{font-size:10px;opacity:.75;text-transform:uppercase;letter-spacing:.4px}
+
+.filter-bar{padding:10px 14px 2px;display:flex;flex-direction:column;gap:6px;max-width:640px;margin:0 auto}
+.filter-row{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;align-items:center}
+.filter-row::-webkit-scrollbar{display:none}
+.filter-label{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--ink2);white-space:nowrap;min-width:52px}
+.chip{flex:0 0 auto;padding:7px 12px;border-radius:999px;font-size:12.5px;font-weight:600;background:var(--card);color:var(--ink2);border:1.5px solid var(--line);cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s;white-space:nowrap}
+.chip .cdot{width:8px;height:8px;border-radius:50%}
+.chip.active{color:#fff;border-color:transparent;background:var(--ink)}
+.chip.themed.active{background:var(--tc,var(--accent));border-color:transparent}
+.chip.add-chip{border-style:dashed;color:var(--accent);font-weight:700}
+.chip.empty-hint{border-style:dashed;color:var(--ink2);font-style:italic;font-weight:400;font-size:11.5px}
+
+.list{padding:10px 14px;display:flex;flex-direction:column;gap:12px;max-width:640px;margin:0 auto}
+.empty{text-align:center;color:var(--ink2);padding:50px 24px;font-size:14px;line-height:1.8}
+.empty .big{font-size:44px;margin-bottom:10px}
+.setup-card{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:20px;text-align:center}
+.setup-card h3{font-size:16px;font-weight:800;margin-bottom:8px}
+.setup-card p{font-size:13.5px;color:var(--ink2);margin-bottom:16px;line-height:1.6}
+.setup-card .btn{display:inline-block;margin:4px}
+
+.card{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:14px 15px 15px;border-left:5px solid var(--tc,var(--accent));animation:pop .22s ease}
+@keyframes pop{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.card h3{font-size:15px;font-weight:700;line-height:1.35}
+.card.done h3{text-decoration:line-through;color:var(--ink2)}
+.card-meta{font-size:11.5px;color:var(--ink2);margin-top:3px;display:flex;flex-wrap:wrap;gap:3px 10px}
+.badges{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--bg);color:var(--ink2)}
+.badge.theme{color:#fff;background:var(--tc,var(--accent))}
+.badge.late{background:#FFE3E3;color:var(--late)}
+.badge.soon{background:#FFF0DC;color:var(--soon)}
+.badge.ph{background:#FFE3E3;color:#C92A2A}
+.badge.pb{background:#F1F3F5;color:#868E96}
+.notes{font-size:12.5px;color:var(--ink2);margin-top:8px;line-height:1.45;white-space:pre-wrap}
+
+.tracker{margin-top:15px}
+.tline{position:relative;height:5px;background:var(--line);border-radius:99px;margin:0 11px}
+.tfill{position:absolute;left:0;top:0;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--tc,var(--accent)),var(--done));transition:width .45s cubic-bezier(.2,.8,.3,1)}
+.tsteps{display:flex;justify-content:space-between;margin-top:-13px}
+.tstep{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+.tstep .pt{width:20px;height:20px;border-radius:50%;background:#fff;border:3px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:10px;transition:all .3s;z-index:1}
+.tstep.on .pt{border-color:var(--tc,var(--accent));background:var(--tc,var(--accent));color:#fff}
+.tstep.now .pt{border-color:var(--tc,var(--accent));background:#fff;animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 4px color-mix(in srgb,var(--tc,var(--accent)) 20%,transparent)}50%{box-shadow:0 0 0 9px color-mix(in srgb,var(--tc,var(--accent)) 8%,transparent)}}
+.tstep label{font-size:9.5px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:.3px}
+.tstep.now label{color:var(--ink)}
+.arow{display:flex;gap:7px;margin-top:13px}
+.btn{border:none;border-radius:11px;padding:9px 12px;font-size:13px;font-weight:700;cursor:pointer;transition:transform .1s;font-family:inherit}
+.btn:active{transform:scale(.96)}
+.btn.primary{flex:1;background:var(--tc,var(--accent));color:#fff}
+.btn.finish{background:var(--done)!important}
+.btn.ghost{background:var(--bg);color:var(--ink2)}
+.btn.danger{background:#FFF0F0;color:var(--late)}
+.btn.full{width:100%;padding:13px;font-size:15px;margin-top:6px}
+.btn.cancel-btn{width:100%;margin-top:8px;background:none;color:var(--ink2)}
+.done-msg{margin-top:12px;text-align:center;font-size:13px;font-weight:700;color:var(--done);background:#EBFBEE;border-radius:11px;padding:9px}
+
+.fab{position:fixed;bottom:22px;right:18px;z-index:50;width:58px;height:58px;border-radius:50%;border:none;background:var(--accent);color:#fff;font-size:28px;box-shadow:0 6px 20px rgba(11,114,133,.4);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s}
+.fab:active{transform:scale(.92)}
+
+.overlay{position:fixed;inset:0;background:rgba(15,23,32,.55);z-index:60;display:none;align-items:flex-end;justify-content:center}
+.overlay.show{display:flex}
+.sheet{background:#fff;width:100%;max-width:560px;border-radius:22px 22px 0 0;padding:20px 18px 28px;max-height:90vh;overflow-y:auto;animation:slideup .26s cubic-bezier(.2,.8,.3,1)}
+@keyframes slideup{from{transform:translateY(60px);opacity:0}to{transform:none;opacity:1}}
+.sheet h2{font-size:16px;font-weight:800;margin-bottom:14px}
+.field{margin-bottom:13px}
+.field label{display:block;font-size:11.5px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}
+.field input,.field textarea,.field select{width:100%;border:1.5px solid var(--line);border-radius:11px;padding:10px 12px;font-size:15px;font-family:inherit;background:#FAFBFC;color:var(--ink)}
+.field input:focus,.field textarea:focus,.field select:focus{outline:2px solid var(--accent);border-color:transparent}
+.field textarea{resize:vertical;min-height:65px}
+.seg{display:flex;gap:7px}
+.seg button{flex:1;padding:9px;border-radius:11px;border:1.5px solid var(--line);background:#FAFBFC;font-size:13px;font-weight:700;color:var(--ink2);cursor:pointer;font-family:inherit}
+.seg button.sel{background:var(--ink);color:#fff;border-color:var(--ink)}
+.colorpick{display:flex;gap:9px;flex-wrap:wrap}
+.colorpick div{width:32px;height:32px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:transform .1s}
+.colorpick div.sel{border-color:var(--ink);transform:scale(1.15)}
+
+/* Gestion listes */
+.manage-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg);border-radius:11px}
+.manage-item .mi-color{width:22px;height:22px;border-radius:50%;flex-shrink:0}
+.manage-item .mi-name{flex:1;font-weight:600;font-size:14px}
+.manage-item .mi-actions{display:flex;gap:6px}
+.manage-item .mi-btn{border:none;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
+.manage-item .mi-edit{background:#E7F5FF;color:#1971C2}
+.manage-item .mi-del{background:#FFF0F0;color:var(--late)}
+.manage-list{display:flex;flex-direction:column;gap:7px;margin-bottom:14px}
+.manage-empty{text-align:center;color:var(--ink2);font-size:13px;padding:20px;font-style:italic}
+
+.notif-banner{margin:10px 14px 0;background:#FFF4E0;border:1.5px solid #FFD8A8;border-radius:13px;padding:11px 13px;font-size:13px;color:#8A5A00;display:none;line-height:1.5;max-width:612px;margin-left:auto;margin-right:auto}
+.notif-banner button{margin-top:7px;border:none;background:var(--soon);color:#fff;font-weight:700;padding:7px 13px;border-radius:9px;cursor:pointer;font-size:13px;font-family:inherit}
+.toast{position:fixed;top:12px;left:50%;transform:translateX(-50%) translateY(-80px);background:var(--ink);color:#fff;padding:10px 18px;border-radius:99px;font-size:13px;font-weight:600;z-index:100;transition:transform .3s;box-shadow:var(--sh);max-width:90vw;text-align:center}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+.profile-header{display:flex;align-items:center;gap:12px;padding:0 0 14px;border-bottom:1.5px solid var(--line);margin-bottom:14px}
+.avatar{width:46px;height:46px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;flex-shrink:0}
+.section-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--ink2);margin:16px 0 8px}
+.menu-btn{display:flex;align-items:center;gap:12px;width:100%;background:var(--bg);border:none;border-radius:12px;padding:13px 14px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;color:var(--ink);margin-bottom:7px;text-align:left}
+.menu-btn .ico{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.menu-btn .arr{margin-left:auto;color:var(--ink2);font-size:16px}
+
+@media(min-width:640px){.overlay{align-items:center}.sheet{border-radius:22px}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="h-top">
+    <h1><span class="dot"></span>Suivi d'actions</h1>
+    <button class="user-btn" onclick="openProfile()">👤 <span id="hUserName">Paramètres</span></button>
+  </div>
+  <div class="stats" id="stats"></div>
+</header>
+
+<div class="notif-banner" id="notifBanner">
+  🔔 Active les notifications pour être alerté(e) des actions urgentes.
+  <br><button onclick="askNotif()">Activer</button>
+</div>
+
+<div class="filter-bar" id="filterBar"></div>
+<div class="list" id="list"></div>
+<button class="fab" onclick="openAdd()">+</button>
+
+<!-- ===== MODALE ACTION ===== -->
+<div class="overlay" id="ovAction">
+<div class="sheet">
+  <h2 id="actionTitle">Nouvelle action</h2>
+  <div class="field"><label>Intitulé *</label>
+    <input type="text" id="fTitle" placeholder="Décris l'action à réaliser…"></div>
+  <div class="field"><label>Thème</label><select id="fTheme"></select></div>
+  <div class="field"><label>Secteur <small style="font-weight:400;text-transform:none">(optionnel)</small></label>
+    <select id="fSecteur"></select></div>
+  <div class="field"><label>Site <small style="font-weight:400;text-transform:none">(optionnel)</small></label>
+    <select id="fSite"></select></div>
+  <div class="field"><label>Priorité</label>
+    <div class="seg" id="fPrio">
+      <button data-v="haute">🔴 Haute</button>
+      <button data-v="normale" class="sel">🔵 Normale</button>
+      <button data-v="basse">⚪ Basse</button>
+    </div></div>
+  <div class="field"><label>Échéance</label><input type="date" id="fDate"></div>
+  <div class="field"><label>Responsable</label>
+    <input type="text" id="fWho" placeholder="Qui doit réaliser cette action ?"></div>
+  <div class="field"><label>Notes</label>
+    <textarea id="fNotes" placeholder="Détails, contexte, références…"></textarea></div>
+  <button class="btn full primary" onclick="saveAction()">Enregistrer</button>
+  <button class="btn cancel-btn" onclick="closeAll()">Annuler</button>
+</div>
+</div>
+
+<!-- ===== MODALE PROFIL / PARAMÈTRES ===== -->
+<div class="overlay" id="ovProfile">
+<div class="sheet">
+  <div class="profile-header">
+    <div class="avatar" id="pAvatar">👤</div>
+    <div>
+      <div style="font-weight:800;font-size:16px" id="pName">Mon profil</div>
+      <div style="font-size:12px;color:var(--ink2)" id="pSub">Personnalise l'appli</div>
+    </div>
+  </div>
+  <div class="field"><label>Ton prénom / nom</label>
+    <input type="text" id="profName" placeholder="Ex : Sophie Martin"></div>
+  <button class="btn full primary" onclick="saveProfile()" style="margin-top:4px">Enregistrer</button>
+  <div class="section-title">Mes listes</div>
+  <button class="menu-btn" onclick="closeAll();setTimeout(()=>openManage('theme'),120)">
+    <span class="ico" style="background:#EDF2FF">🎨</span>Thèmes<span class="arr">›</span></button>
+  <button class="menu-btn" onclick="closeAll();setTimeout(()=>openManage('secteur'),120)">
+    <span class="ico" style="background:#F3F0FF">🏷️</span>Secteurs<span class="arr">›</span></button>
+  <button class="menu-btn" onclick="closeAll();setTimeout(()=>openManage('site'),120)">
+    <span class="ico" style="background:#E6FCF5">📍</span>Sites<span class="arr">›</span></button>
+  <button class="btn cancel-btn" onclick="closeAll()">Fermer</button>
+</div>
+</div>
+
+<!-- ===== MODALE GESTION LISTE ===== -->
+<div class="overlay" id="ovManage">
+<div class="sheet">
+  <h2 id="manageTitle">—</h2>
+  <div class="manage-list" id="manageList"></div>
+  <button class="btn full primary" id="manageBtnAdd">+ Ajouter</button>
+  <button class="btn cancel-btn" onclick="closeAll()">Fermer</button>
+</div>
+</div>
+
+<!-- ===== MODALE ÉDITION ÉLÉMENT (thème/secteur/site) ===== -->
+<div class="overlay" id="ovEdit">
+<div class="sheet">
+  <h2 id="editItemTitle">—</h2>
+  <div class="field"><label id="editItemLabel">Nom *</label>
+    <input type="text" id="editItemName" placeholder=""></div>
+  <div class="field" id="editColorField" style="display:none">
+    <label>Couleur</label>
+    <div class="colorpick" id="editColors"></div>
+  </div>
+  <button class="btn full primary" onclick="saveItem()">Enregistrer</button>
+  <button class="btn cancel-btn" onclick="closeAll();setTimeout(()=>openManage(currentManageType),120)">Annuler</button>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const KEY = "suivi3-v1";
+const COLORS = ["#E8590C","#F59F00","#2F9E44","#0CA678","#1971C2","#0B7285","#7048E8","#C2255C","#862E9C","#495057"];
+const STEPS = ["À faire","En cours","Vérif.","Terminé"];
+const PCT = [4,37,70,100];
+
+let data = { profile:{name:""}, themes:[], secteurs:[], sites:[], actions:[] };
+let fTheme=null, fSecteur=null, fSite=null, fStatus=null;
+let editId=null, pickedPrio="normale", pickedColor=COLORS[0];
+let currentManageType=null, editItemId=null;
+let notified=new Set();
+
+/* ---- Stockage ---- */
+async function load(){
+  try{ const r=await window.storage.get(KEY); if(r?.value) data=JSON.parse(r.value); }catch(e){}
+  render(); updateProfileHeader();
+  setTimeout(checkNotifs,1400); setInterval(checkNotifs,60000);
+}
+async function persist(){
+  try{ await window.storage.set(KEY,JSON.stringify(data)); }
+  catch(e){ toast("⚠️ Sauvegarde impossible"); }
+}
+
+/* ---- Utils ---- */
+const $=id=>document.getElementById(id);
+function toast(m){const t=$("toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2700)}
+function esc(s){return(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function themeOf(a){return data.themes.find(t=>t.id===a.themeId)||{name:"—",color:"#868E96"}}
+function labelOf(list,id){return list.find(x=>x.id===id)?.name||null}
+function today(){const d=new Date();d.setHours(0,0,0,0);return d}
+function dstate(a){
+  if(!a.due||a.step===3)return null;
+  const d=new Date(a.due+"T00:00:00"), diff=Math.round((d-today())/86400000);
+  if(diff<0)return{k:"late",label:"En retard "+(-diff)+"j"};
+  if(diff===0)return{k:"soon",label:"Aujourd'hui"};
+  if(diff<=3)return{k:"soon",label:"J-"+diff};
+  return{k:"ok",label:new Date(a.due+"T00:00:00").toLocaleDateString("fr-FR",{day:"numeric",month:"short"})};
+}
+
+/* ---- Rendu ---- */
+function render(){renderStats();renderFilters();renderList()}
+
+function renderStats(){
+  const a=data.actions;
+  const late=a.filter(x=>dstate(x)?.k==="late").length;
+  const items=[
+    {l:"À faire",v:a.filter(x=>x.step===0).length,f:0},
+    {l:"En cours",v:a.filter(x=>x.step===1||x.step===2).length,f:12},
+    {l:"En retard",v:late,f:"late",red:true},
+    {l:"Terminées",v:a.filter(x=>x.step===3).length,f:3}
+  ];
+  $("stats").innerHTML=items.map(it=>
+    `<div class="stat${fStatus===it.f?" active":""}" onclick="togStat(${JSON.stringify(it.f)})">
+      <b class="${it.red&&it.v>0?"red":""}">${it.v}</b><span>${it.l}</span></div>`).join("");
+}
+
+function renderFilters(){
+  const rows=[
+    {label:"Thème", list:data.themes, type:"theme", active:fTheme, colored:true},
+    {label:"Secteur", list:data.secteurs, type:"secteur", active:fSecteur, colored:false},
+    {label:"Site", list:data.sites, type:"site", active:fSite, colored:false}
+  ];
+  $("filterBar").innerHTML=rows.map(row=>{
+    let chips="";
+    if(row.list.length===0){
+      chips=`<div class="chip empty-hint" onclick="closeAll();setTimeout(()=>openManage('${row.type}'),120)">+ Configurer</div>`;
+    } else {
+      chips=row.list.map(it=>{
+        const on=row.active===it.id;
+        const style=row.colored&&on?`background:${it.color};border-color:transparent`:on?`background:var(--ink);border-color:transparent`:"";
+        return `<div class="chip${on?" active":""}${row.colored?" themed":""}" style="--tc:${row.colored?it.color:"#0B7285"};${style}" onclick="togFilter('${row.type}','${it.id}')">
+          ${row.colored?`<span class="cdot" style="background:${on?"#fff":it.color}"></span>`:""}${esc(it.name)}</div>`;
+      }).join("");
+    }
+    return `<div class="filter-row"><span class="filter-label">${row.label}</span>${chips}</div>`;
+  }).join("");
+}
+
+function renderList(){
+  if(data.themes.length===0){
+    $("list").innerHTML=`<div class="setup-card">
+      <div class="big" style="font-size:40px;margin-bottom:10px">👋</div>
+      <h3>Bienvenue !</h3>
+      <p>Commence par créer tes <b>thèmes</b> pour organiser tes actions.<br>
+      Tu pourras ensuite ajouter des secteurs et des sites si tu en as besoin.</p>
+      <button class="btn primary" style="padding:11px 20px" onclick="openManage('theme')">Créer mes thèmes</button>
+    </div>`;
+    return;
+  }
+  let acts=[...data.actions];
+  if(fTheme) acts=acts.filter(a=>a.themeId===fTheme);
+  if(fSecteur) acts=acts.filter(a=>a.secteurId===fSecteur);
+  if(fSite) acts=acts.filter(a=>a.siteId===fSite);
+  if(fStatus==="late") acts=acts.filter(a=>dstate(a)?.k==="late");
+  else if(fStatus===12) acts=acts.filter(a=>a.step===1||a.step===2);
+  else if(fStatus!==null) acts=acts.filter(a=>a.step===fStatus);
+  acts.sort((a,b)=>{
+    if((a.step===3)!==(b.step===3))return a.step===3?1:-1;
+    const la=dstate(a)?.k==="late",lb=dstate(b)?.k==="late";
+    if(la!==lb)return la?-1:1;
+    const pa=a.prio==="haute"?0:a.prio==="basse"?2:1,pb=b.prio==="haute"?0:b.prio==="basse"?2:1;
+    if(pa!==pb)return pa-pb;
+    return(a.due||"9999")<(b.due||"9999")?-1:1;
+  });
+  if(!acts.length){
+    $("list").innerHTML=`<div class="empty"><div class="big">📋</div>Aucune action ici.<br>Appuie sur <b>+</b> pour en créer une.</div>`;
+    return;
+  }
+  $("list").innerHTML=acts.map(cardHTML).join("");
+}
+
+function cardHTML(a){
+  const th=themeOf(a), ds=dstate(a);
+  const secName=labelOf(data.secteurs,a.secteurId), siName=labelOf(data.sites,a.siteId);
+  const steps=STEPS.map((l,i)=>`<div class="tstep${i<a.step?" on":""}${i===a.step?" now on":""}">
+    <div class="pt">${i<a.step?"✓":""}</div><label>${l}</label></div>`).join("");
+  const dueBadge=ds?`<span class="badge ${ds.k==="late"?"late":ds.k==="soon"?"soon":""}">${ds.k==="late"?"⚠️ ":ds.k==="soon"?"⏳ ":"📅 "}${ds.label}</span>`:"";
+  const meta=[secName&&`🏷️ ${esc(secName)}`,siName&&`📍 ${esc(siName)}`,a.who&&`👤 ${esc(a.who)}`].filter(Boolean);
+  const doneDate=a.doneAt?new Date(a.doneAt+"T00:00:00").toLocaleDateString("fr-FR",{day:"numeric",month:"short"}):"";
+  return `<div class="card${a.step===3?" done":""}" style="--tc:${th.color}">
+    <h3>${esc(a.title)}</h3>
+    ${meta.length?`<div class="card-meta">${meta.map(m=>`<span>${m}</span>`).join("")}</div>`:""}
+    <div class="badges">
+      <span class="badge theme">${esc(th.name)}</span>
+      ${a.prio==="haute"?`<span class="badge ph">🔴 Haute</span>`:a.prio==="basse"?`<span class="badge pb">⚪ Basse</span>`:""}
+      ${dueBadge}
+    </div>
+    ${a.notes?`<div class="notes">${esc(a.notes)}</div>`:""}
+    <div class="tracker">
+      <div class="tline"><div class="tfill" style="width:${PCT[a.step]}%"></div></div>
+      <div class="tsteps">${steps}</div>
+    </div>
+    ${a.step===3
+      ?`<div class="done-msg">✅ Terminée${doneDate?" le "+doneDate:""}</div>
+        <div class="arow">
+          <button class="btn ghost" onclick="moveStep('${a.id}',-1)">↩ Rouvrir</button>
+          <button class="btn danger" onclick="delAction('${a.id}')">🗑 Supprimer</button>
+        </div>`
+      :`<div class="arow">
+          ${a.step>0?`<button class="btn ghost" onclick="moveStep('${a.id}',-1)">← Retour</button>`:""}
+          <button class="btn primary${a.step===2?" finish":""}" onclick="moveStep('${a.id}',1)">
+            ${a.step===0?"▶ Démarrer":a.step===1?"→ Vérification":"✓ Terminer"}</button>
+          <button class="btn ghost" onclick="openEdit('${a.id}')">✎</button>
+          <button class="btn danger" onclick="delAction('${a.id}')">🗑</button>
+        </div>`}
+  </div>`;
+}
+
+/* ---- Filtres ---- */
+function togFilter(type,id){
+  if(type==="theme")fTheme=(fTheme===id)?null:id;
+  else if(type==="secteur")fSecteur=(fSecteur===id)?null:id;
+  else if(type==="site")fSite=(fSite===id)?null:id;
+  render();
+}
+function togStat(f){fStatus=(fStatus===f)?null:f;render()}
+
+/* ---- Actions CRUD ---- */
+function openAdd(){
+  if(data.themes.length===0){toast("Crée d'abord un thème dans les paramètres 🙂");return}
+  editId=null;pickedPrio="normale";
+  $("actionTitle").textContent="Nouvelle action";
+  $("fTitle").value="";$("fDate").value="";$("fWho").value="";$("fNotes").value="";
+  fillSelects();segSel("normale");
+  $("ovAction").classList.add("show");
+}
+function openEdit(id){
+  const a=data.actions.find(x=>x.id===id);if(!a)return;
+  editId=id;pickedPrio=a.prio;
+  $("actionTitle").textContent="Modifier l'action";
+  $("fTitle").value=a.title;$("fDate").value=a.due||"";$("fWho").value=a.who||"";$("fNotes").value=a.notes||"";
+  fillSelects(a.themeId,a.secteurId,a.siteId);segSel(a.prio);
+  $("ovAction").classList.add("show");
+}
+function fillSelects(thId,secId,siId){
+  $("fTheme").innerHTML=data.themes.map(t=>`<option value="${t.id}"${t.id===thId?" selected":""}>${esc(t.name)}</option>`).join("");
+  $("fSecteur").innerHTML=`<option value="">— Aucun —</option>`+data.secteurs.map(s=>`<option value="${s.id}"${s.id===secId?" selected":""}>${esc(s.name)}</option>`).join("");
+  $("fSite").innerHTML=`<option value="">— Aucun —</option>`+data.sites.map(s=>`<option value="${s.id}"${s.id===siId?" selected":""}>${esc(s.name)}</option>`).join("");
+}
+function segSel(v){document.querySelectorAll("#fPrio button").forEach(b=>b.classList.toggle("sel",b.dataset.v===v))}
+document.addEventListener("click",e=>{const b=e.target.closest("#fPrio button");if(b){pickedPrio=b.dataset.v;segSel(pickedPrio)}});
+function saveAction(){
+  const title=$("fTitle").value.trim();
+  if(!title){toast("Donne un intitulé à l'action 🙂");return}
+  const obj={title,themeId:$("fTheme").value,secteurId:$("fSecteur").value||null,siteId:$("fSite").value||null,prio:pickedPrio,due:$("fDate").value||null,who:$("fWho").value.trim()||null,notes:$("fNotes").value.trim()||null};
+  if(editId){Object.assign(data.actions.find(x=>x.id===editId),obj);toast("Action modifiée ✓")}
+  else{data.actions.unshift({id:"a"+Date.now(),step:0,...obj});toast("Action créée ✓")}
+  persist();closeAll();render();
+}
+function moveStep(id,d){
+  const a=data.actions.find(x=>x.id===id);if(!a)return;
+  a.step=Math.max(0,Math.min(3,a.step+d));
+  if(a.step===3){a.doneAt=new Date().toISOString().slice(0,10);toast("🎉 Action terminée !")}
+  persist();render();
+}
+function delAction(id){
+  if(!confirm("Supprimer cette action ?"))return;
+  data.actions=data.actions.filter(x=>x.id!==id);
+  persist();render();toast("Action supprimée");
+}
+
+/* ---- Gestion listes (thèmes / secteurs / sites) ---- */
+function openManage(type){
+  currentManageType=type;
+  const cfg={
+    theme:{title:"Mes thèmes",btnLabel:"+ Nouveau thème"},
+    secteur:{title:"Mes secteurs",btnLabel:"+ Nouveau secteur"},
+    site:{title:"Mes sites",btnLabel:"+ Nouveau site"}
+  }[type];
+  $("manageTitle").textContent=cfg.title;
+  $("manageBtnAdd").textContent=cfg.btnLabel;
+  $("manageBtnAdd").onclick=()=>openItemEdit(type,null);
+  renderManageItems(type);
+  $("ovManage").classList.add("show");
+}
+function getList(type){return type==="theme"?data.themes:type==="secteur"?data.secteurs:data.sites}
+function renderManageItems(type){
+  const list=getList(type);
+  if(!list.length){
+    $("manageList").innerHTML=`<div class="manage-empty">Aucun élément — crée le premier !</div>`;
+    return;
+  }
+  $("manageList").innerHTML=list.map(it=>`
+    <div class="manage-item">
+      ${type==="theme"?`<div class="mi-color" style="background:${it.color}"></div>`:""}
+      <span class="mi-name">${esc(it.name)}</span>
+      <div class="mi-actions">
+        <button class="mi-btn mi-edit" onclick="openItemEdit('${type}','${it.id}')">✎ Modifier</button>
+        <button class="mi-btn mi-del" onclick="deleteItem('${type}','${it.id}')">🗑</button>
+      </div>
+    </div>`).join("");
+}
+function openItemEdit(type,id){
+  currentManageType=type;editItemId=id;
+  const isTheme=type==="theme";
+  const labels={theme:"thème",secteur:"secteur",site:"site"};
+  $("editItemTitle").textContent=id?"Modifier le "+labels[type]:"Nouveau "+labels[type];
+  $("editItemLabel").textContent="Nom du "+labels[type]+" *";
+  $("editColorField").style.display=isTheme?"block":"none";
+  const existing=id?getList(type).find(x=>x.id===id):null;
+  $("editItemName").value=existing?.name||"";
+  if(isTheme){
+    pickedColor=existing?.color||COLORS[0];
+    $("editColors").innerHTML=COLORS.map(c=>`<div style="background:${c}" class="${c===pickedColor?"sel":""}" onclick="pickColor('${c}',this)"></div>`).join("");
+  }
+  $("ovManage").classList.remove("show");
+  $("ovEdit").classList.add("show");
+}
+function pickColor(c,el){pickedColor=c;document.querySelectorAll("#editColors div").forEach(d=>d.classList.remove("sel"));el.classList.add("sel")}
+function saveItem(){
+  const name=$("editItemName").value.trim();
+  if(!name){toast("Donne un nom 🙂");return}
+  const list=getList(currentManageType);
+  if(editItemId){
+    const item=list.find(x=>x.id===editItemId);
+    item.name=name;
+    if(currentManageType==="theme")item.color=pickedColor;
+  } else {
+    const newItem={id:currentManageType[0]+Date.now(),name};
+    if(currentManageType==="theme")newItem.color=pickedColor;
+    list.push(newItem);
+  }
+  persist();closeAll();render();
+  toast(editItemId?"Modifié ✓":"Créé ✓");
+}
+function deleteItem(type,id){
+  const inUse=data.actions.some(a=>a.themeId===id||a.secteurId===id||a.siteId===id);
+  if(inUse&&!confirm("Des actions utilisent cet élément. Supprimer quand même ?"))return;
+  const list=getList(type);
+  const idx=list.findIndex(x=>x.id===id);
+  if(idx>-1)list.splice(idx,1);
+  persist();renderManageItems(type);render();toast("Supprimé ✓");
+}
+
+/* ---- Profil ---- */
+function openProfile(){
+  $("profName").value=data.profile.name||"";
+  $("pName").textContent=data.profile.name||"Mon profil";
+  $("pAvatar").textContent=data.profile.name?data.profile.name[0].toUpperCase():"👤";
+  $("ovProfile").classList.add("show");
+}
+function saveProfile(){
+  data.profile.name=$("profName").value.trim();
+  persist();updateProfileHeader();toast("Profil enregistré ✓");
+}
+function updateProfileHeader(){
+  const n=data.profile.name;
+  $("hUserName").textContent=n?n.split(" ")[0]:"Paramètres";
+  if(n){$("pName").textContent=n;$("pAvatar").textContent=n[0].toUpperCase()}
+}
+
+/* ---- Notifications ---- */
+function askNotif(){
+  if(!("Notification"in window)){toast("Non supporté ici");return}
+  Notification.requestPermission().then(p=>{$("notifBanner").style.display="none";if(p==="granted"){toast("🔔 Notifications activées");checkNotifs()}});
+}
+function checkNotifs(){
+  const urgent=data.actions.filter(a=>{const ds=dstate(a);return ds&&(ds.k==="late"||ds.label==="Aujourd'hui")});
+  if("Notification"in window&&Notification.permission==="granted"){
+    urgent.forEach(a=>{if(notified.has(a.id))return;notified.add(a.id);
+      try{new Notification("⚠️ "+a.title,{body:dstate(a).label+" · "+themeOf(a).name})}catch(e){}});
+  }else if("Notification"in window&&Notification.permission==="default"&&urgent.length){
+    $("notifBanner").style.display="block";
+  }
+  document.title=urgent.length?"("+urgent.length+") Suivi d'actions":"Suivi d'actions";
+}
+
+function closeAll(){document.querySelectorAll(".overlay").forEach(o=>o.classList.remove("show"))}
+document.querySelectorAll(".overlay").forEach(o=>o.addEventListener("click",e=>{if(e.target===o)closeAll()}));
+
+load();
+</script>
+</body>
+</html>
