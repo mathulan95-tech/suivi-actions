@@ -42,7 +42,6 @@ header{background:var(--ink);color:#fff;padding:16px 16px 12px;position:sticky;t
 .setup-card{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:20px;text-align:center}
 .setup-card h3{font-size:16px;font-weight:800;margin-bottom:8px}
 .setup-card p{font-size:13.5px;color:var(--ink2);margin-bottom:16px;line-height:1.6}
-.setup-card .btn{display:inline-block;margin:4px}
 
 .card{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:14px 15px 15px;border-left:5px solid var(--tc,var(--accent));animation:pop .22s ease}
 @keyframes pop{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
@@ -100,7 +99,6 @@ header{background:var(--ink);color:#fff;padding:16px 16px 12px;position:sticky;t
 .colorpick div{width:32px;height:32px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:transform .1s}
 .colorpick div.sel{border-color:var(--ink);transform:scale(1.15)}
 
-/* Gestion listes */
 .manage-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg);border-radius:11px}
 .manage-item .mi-color{width:22px;height:22px;border-radius:50%;flex-shrink:0}
 .manage-item .mi-name{flex:1;font-weight:600;font-size:14px}
@@ -145,7 +143,7 @@ header{background:var(--ink);color:#fff;padding:16px 16px 12px;position:sticky;t
 <div class="list" id="list"></div>
 <button class="fab" onclick="openAdd()">+</button>
 
-<!-- ===== MODALE ACTION ===== -->
+<!-- MODALE ACTION -->
 <div class="overlay" id="ovAction">
 <div class="sheet">
   <h2 id="actionTitle">Nouvelle action</h2>
@@ -172,14 +170,14 @@ header{background:var(--ink);color:#fff;padding:16px 16px 12px;position:sticky;t
 </div>
 </div>
 
-<!-- ===== MODALE PROFIL / PARAMÈTRES ===== -->
+<!-- MODALE PROFIL -->
 <div class="overlay" id="ovProfile">
 <div class="sheet">
   <div class="profile-header">
     <div class="avatar" id="pAvatar">👤</div>
     <div>
       <div style="font-weight:800;font-size:16px" id="pName">Mon profil</div>
-      <div style="font-size:12px;color:var(--ink2)" id="pSub">Personnalise l'appli</div>
+      <div style="font-size:12px;color:var(--ink2)">Personnalise l'appli</div>
     </div>
   </div>
   <div class="field"><label>Ton prénom / nom</label>
@@ -196,7 +194,7 @@ header{background:var(--ink);color:#fff;padding:16px 16px 12px;position:sticky;t
 </div>
 </div>
 
-<!-- ===== MODALE GESTION LISTE ===== -->
+<!-- MODALE GESTION LISTE -->
 <div class="overlay" id="ovManage">
 <div class="sheet">
   <h2 id="manageTitle">—</h2>
@@ -206,12 +204,12 @@ header{background:var(--ink);color:#fff;padding:16px 16px 12px;position:sticky;t
 </div>
 </div>
 
-<!-- ===== MODALE ÉDITION ÉLÉMENT (thème/secteur/site) ===== -->
+<!-- MODALE ÉDITION ÉLÉMENT -->
 <div class="overlay" id="ovEdit">
 <div class="sheet">
   <h2 id="editItemTitle">—</h2>
   <div class="field"><label id="editItemLabel">Nom *</label>
-    <input type="text" id="editItemName" placeholder=""></div>
+    <input type="text" id="editItemName"></div>
   <div class="field" id="editColorField" style="display:none">
     <label>Couleur</label>
     <div class="colorpick" id="editColors"></div>
@@ -235,14 +233,19 @@ let editId=null, pickedPrio="normale", pickedColor=COLORS[0];
 let currentManageType=null, editItemId=null;
 let notified=new Set();
 
-/* ---- Stockage ---- */
-async function load(){
-  try{ const r=await window.storage.get(KEY); if(r?.value) data=JSON.parse(r.value); }catch(e){}
-  render(); updateProfileHeader();
-  setTimeout(checkNotifs,1400); setInterval(checkNotifs,60000);
+/* ---- Stockage localStorage ---- */
+function load(){
+  try{
+    const saved = localStorage.getItem(KEY);
+    if(saved) data = JSON.parse(saved);
+  }catch(e){}
+  render();
+  updateProfileHeader();
+  setTimeout(checkNotifs,1400);
+  setInterval(checkNotifs,60000);
 }
-async function persist(){
-  try{ await window.storage.set(KEY,JSON.stringify(data)); }
+function persist(){
+  try{ localStorage.setItem(KEY, JSON.stringify(data)); }
   catch(e){ toast("⚠️ Sauvegarde impossible"); }
 }
 
@@ -255,7 +258,7 @@ function labelOf(list,id){return list.find(x=>x.id===id)?.name||null}
 function today(){const d=new Date();d.setHours(0,0,0,0);return d}
 function dstate(a){
   if(!a.due||a.step===3)return null;
-  const d=new Date(a.due+"T00:00:00"), diff=Math.round((d-today())/86400000);
+  const d=new Date(a.due+"T00:00:00"),diff=Math.round((d-today())/86400000);
   if(diff<0)return{k:"late",label:"En retard "+(-diff)+"j"};
   if(diff===0)return{k:"soon",label:"Aujourd'hui"};
   if(diff<=3)return{k:"soon",label:"J-"+diff};
@@ -281,15 +284,15 @@ function renderStats(){
 
 function renderFilters(){
   const rows=[
-    {label:"Thème", list:data.themes, type:"theme", active:fTheme, colored:true},
-    {label:"Secteur", list:data.secteurs, type:"secteur", active:fSecteur, colored:false},
-    {label:"Site", list:data.sites, type:"site", active:fSite, colored:false}
+    {label:"Thème",list:data.themes,type:"theme",active:fTheme,colored:true},
+    {label:"Secteur",list:data.secteurs,type:"secteur",active:fSecteur,colored:false},
+    {label:"Site",list:data.sites,type:"site",active:fSite,colored:false}
   ];
   $("filterBar").innerHTML=rows.map(row=>{
     let chips="";
     if(row.list.length===0){
       chips=`<div class="chip empty-hint" onclick="closeAll();setTimeout(()=>openManage('${row.type}'),120)">+ Configurer</div>`;
-    } else {
+    }else{
       chips=row.list.map(it=>{
         const on=row.active===it.id;
         const style=row.colored&&on?`background:${it.color};border-color:transparent`:on?`background:var(--ink);border-color:transparent`:"";
@@ -304,10 +307,10 @@ function renderFilters(){
 function renderList(){
   if(data.themes.length===0){
     $("list").innerHTML=`<div class="setup-card">
-      <div class="big" style="font-size:40px;margin-bottom:10px">👋</div>
+      <div style="font-size:40px;margin-bottom:10px">👋</div>
       <h3>Bienvenue !</h3>
       <p>Commence par créer tes <b>thèmes</b> pour organiser tes actions.<br>
-      Tu pourras ensuite ajouter des secteurs et des sites si tu en as besoin.</p>
+      Tu pourras ensuite ajouter des secteurs et des sites si besoin.</p>
       <button class="btn primary" style="padding:11px 20px" onclick="openManage('theme')">Créer mes thèmes</button>
     </div>`;
     return;
@@ -335,8 +338,8 @@ function renderList(){
 }
 
 function cardHTML(a){
-  const th=themeOf(a), ds=dstate(a);
-  const secName=labelOf(data.secteurs,a.secteurId), siName=labelOf(data.sites,a.siteId);
+  const th=themeOf(a),ds=dstate(a);
+  const secName=labelOf(data.secteurs,a.secteurId),siName=labelOf(data.sites,a.siteId);
   const steps=STEPS.map((l,i)=>`<div class="tstep${i<a.step?" on":""}${i===a.step?" now on":""}">
     <div class="pt">${i<a.step?"✓":""}</div><label>${l}</label></div>`).join("");
   const dueBadge=ds?`<span class="badge ${ds.k==="late"?"late":ds.k==="soon"?"soon":""}">${ds.k==="late"?"⚠️ ":ds.k==="soon"?"⏳ ":"📅 "}${ds.label}</span>`:"";
@@ -424,7 +427,7 @@ function delAction(id){
   persist();render();toast("Action supprimée");
 }
 
-/* ---- Gestion listes (thèmes / secteurs / sites) ---- */
+/* ---- Gestion listes ---- */
 function openManage(type){
   currentManageType=type;
   const cfg={
@@ -480,7 +483,7 @@ function saveItem(){
     const item=list.find(x=>x.id===editItemId);
     item.name=name;
     if(currentManageType==="theme")item.color=pickedColor;
-  } else {
+  }else{
     const newItem={id:currentManageType[0]+Date.now(),name};
     if(currentManageType==="theme")newItem.color=pickedColor;
     list.push(newItem);
@@ -492,8 +495,7 @@ function deleteItem(type,id){
   const inUse=data.actions.some(a=>a.themeId===id||a.secteurId===id||a.siteId===id);
   if(inUse&&!confirm("Des actions utilisent cet élément. Supprimer quand même ?"))return;
   const list=getList(type);
-  const idx=list.findIndex(x=>x.id===id);
-  if(idx>-1)list.splice(idx,1);
+  list.splice(list.findIndex(x=>x.id===id),1);
   persist();renderManageItems(type);render();toast("Supprimé ✓");
 }
 
@@ -517,13 +519,19 @@ function updateProfileHeader(){
 /* ---- Notifications ---- */
 function askNotif(){
   if(!("Notification"in window)){toast("Non supporté ici");return}
-  Notification.requestPermission().then(p=>{$("notifBanner").style.display="none";if(p==="granted"){toast("🔔 Notifications activées");checkNotifs()}});
+  Notification.requestPermission().then(p=>{
+    $("notifBanner").style.display="none";
+    if(p==="granted"){toast("🔔 Notifications activées");checkNotifs()}
+  });
 }
 function checkNotifs(){
   const urgent=data.actions.filter(a=>{const ds=dstate(a);return ds&&(ds.k==="late"||ds.label==="Aujourd'hui")});
   if("Notification"in window&&Notification.permission==="granted"){
-    urgent.forEach(a=>{if(notified.has(a.id))return;notified.add(a.id);
-      try{new Notification("⚠️ "+a.title,{body:dstate(a).label+" · "+themeOf(a).name})}catch(e){}});
+    urgent.forEach(a=>{
+      if(notified.has(a.id))return;
+      notified.add(a.id);
+      try{new Notification("⚠️ "+a.title,{body:dstate(a).label+" · "+themeOf(a).name})}catch(e){}
+    });
   }else if("Notification"in window&&Notification.permission==="default"&&urgent.length){
     $("notifBanner").style.display="block";
   }
